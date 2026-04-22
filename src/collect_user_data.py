@@ -3,32 +3,20 @@ import pandas as pd
 from pynput import keyboard, mouse
 import os
 
-# -----------------------------
-# GLOBAL VARIABLES
-# -----------------------------
 key_timestamps = []
 click_count = 0
 start_time = time.time()
 
 USER_ID = 1   # change if needed
 
-# -----------------------------
-# KEYBOARD TRACKING
-# -----------------------------
 def on_key_press(key):
     key_timestamps.append(time.time())
 
-# -----------------------------
-# MOUSE TRACKING
-# -----------------------------
 def on_click(x, y, button, pressed):
     global click_count
     if pressed:
         click_count += 1
 
-# -----------------------------
-# START RECORDING
-# -----------------------------
 keyboard_listener = keyboard.Listener(on_press=on_key_press)
 mouse_listener = mouse.Listener(on_click=on_click)
 
@@ -43,9 +31,6 @@ time.sleep(RECORD_TIME)
 keyboard_listener.stop()
 mouse_listener.stop()
 
-# -----------------------------
-# FEATURE CALCULATION
-# -----------------------------
 end_time = time.time()
 session_duration = end_time - start_time
 
@@ -65,9 +50,6 @@ else:
 # clicks per second
 click_rate = click_count / session_duration
 
-# -----------------------------
-# CREATE DATA ROW
-# -----------------------------
 row = {
     "user_id": USER_ID,
     "typing_speed": typing_speed,
@@ -79,9 +61,6 @@ row = {
 
 df = pd.DataFrame([row])
 
-# -----------------------------
-# SAVE TO CSV (APPEND MODE)
-# -----------------------------
 file_path = "data/real_user_sessions.csv"
 
 if os.path.exists(file_path):
