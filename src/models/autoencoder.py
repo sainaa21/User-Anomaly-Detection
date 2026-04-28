@@ -47,6 +47,8 @@ autoencoder.fit(
     verbose=1
 )
 
+autoencoder.save("src/models/autoencoder.h5")
+
 # Predict on test data
 reconstructions = autoencoder.predict(X_test)
 
