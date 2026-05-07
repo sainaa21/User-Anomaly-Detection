@@ -1,5 +1,3 @@
-# src/decision.py
-
 LOW_THRESHOLD = 0.2
 MEDIUM_THRESHOLD = 0.5
 HIGH_THRESHOLD = 0.7

@@ -13,6 +13,10 @@ df[["iso_score_norm"]] = scaler.fit_transform(df[["iso_score"]])
 df["risk_score"] = 0.5 * df["ae_score_norm"] + 0.5 * df["iso_score_norm"]
    
 df["action"] = df["risk_score"].apply(decide_action)
+df["is_trusted"] = df["risk_score"] < 0.3
+trusted_df = df[df["is_trusted"]]
+
+print(f"\n✅ Trusted sessions: {len(trusted_df)}")
 print("\n📊 Action Distribution:\n")
 print(df["action"].value_counts())
 
