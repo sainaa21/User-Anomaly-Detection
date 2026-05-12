@@ -1,16 +1,11 @@
 import pandas as pd
 
 
-# =========================================================
-# LOAD DATA
-# =========================================================
-
 def load_data():
 
     df1 = pd.read_csv("data/raw_sessions.csv")
     df2 = pd.read_csv("data/real_user_sessions.csv")
 
-    # real user sessions = normal
     df2["label"] = 0
 
     df = pd.concat(
@@ -21,35 +16,24 @@ def load_data():
     return df
 
 
-# =========================================================
-# CLEAN DATA
-# =========================================================
-
 def clean_data(df):
 
     df = df.dropna()
 
-    # remove impossible values
     df = df[df["typing_speed"] > 0]
     df = df[df["click_rate"] >= 0]
 
     return df
 
 
-# =========================================================
-# BASIC FEATURE ENGINEERING
-# =========================================================
-
 def engineer_features(df):
 
     df = df.copy()
 
-    # typing consistency
     df["typing_consistency"] = (
         1 / (df["avg_key_delay"] + 1e-5)
     )
 
-    # activity ratio
     df["activity_ratio"] = (
         df["session_duration"] /
         (df["idle_time"] + 1)
@@ -57,10 +41,6 @@ def engineer_features(df):
 
     return df
 
-
-# =========================================================
-# USER STATISTICS
-# =========================================================
 
 def compute_user_stats(df):
 
@@ -82,10 +62,6 @@ def compute_user_stats(df):
     return user_stats
 
 
-# =========================================================
-# MERGE USER STATS
-# =========================================================
-
 def merge_user_stats(df, user_stats):
 
     df = df.merge(
@@ -97,13 +73,7 @@ def merge_user_stats(df, user_stats):
     return df
 
 
-# =========================================================
-# DEVIATION FEATURES
-# =========================================================
-
 def deviation_features(df):
-
-    # deviation from mean
 
     df["typing_dev"] = abs(
         df["typing_speed"] -
@@ -114,8 +84,6 @@ def deviation_features(df):
         df["click_rate"] -
         df["click_rate_mean"]
     )
-
-    # z-score features
 
     df["typing_z"] = (
         df["typing_dev"] /
@@ -130,10 +98,6 @@ def deviation_features(df):
     return df
 
 
-# =========================================================
-# BEHAVIOR DRIFT
-# =========================================================
-
 def behavior_drift(df):
 
     df["drift_score"] = (
@@ -145,10 +109,6 @@ def behavior_drift(df):
 
     return df
 
-
-# =========================================================
-# SELECT FINAL FEATURES
-# =========================================================
 
 def select_features(df):
 
@@ -171,10 +131,6 @@ def select_features(df):
     ]
 
 
-# =========================================================
-# SAVE FEATURES
-# =========================================================
-
 def save_features(df):
 
     df.to_csv(
@@ -182,10 +138,6 @@ def save_features(df):
         index=False
     )
 
-
-# =========================================================
-# TRAINING PIPELINE
-# =========================================================
 
 def run_pipeline():
 
@@ -210,27 +162,26 @@ def run_pipeline():
     print("✅ Features saved to data/features.csv")
 
 
-# =========================================================
-# STREAMLIT / LIVE PREDICTION PIPELINE
-# =========================================================
+def prepare_single_session_features(data):
 
-def prepare_single_session_features(df):
+    df = pd.DataFrame([{
+
+        "typing_speed": data.typing_speed,
+        "avg_key_delay": data.avg_key_delay,
+        "click_rate": data.click_rate,
+        "mouse_speed": data.mouse_speed,
+        "session_duration": data.session_duration,
+        "idle_time": data.idle_time
+
+    }])
 
     df = engineer_features(df)
-
-    # -------------------------------------------------
-    # Temporary baseline values
-    # -------------------------------------------------
 
     df["typing_speed_mean"] = 180
     df["typing_speed_std"] = 20
 
     df["click_rate_mean"] = 2.5
     df["click_rate_std"] = 1.0
-
-    # -------------------------------------------------
-    # Deviation Features
-    # -------------------------------------------------
 
     df["typing_dev"] = abs(
         df["typing_speed"] -
@@ -242,10 +193,6 @@ def prepare_single_session_features(df):
         df["click_rate_mean"]
     )
 
-    # -------------------------------------------------
-    # Z-score Features
-    # -------------------------------------------------
-
     df["typing_z"] = (
         df["typing_dev"] /
         (df["typing_speed_std"] + 1e-5)
@@ -256,20 +203,12 @@ def prepare_single_session_features(df):
         (df["click_rate_std"] + 1e-5)
     )
 
-    # -------------------------------------------------
-    # Drift Score
-    # -------------------------------------------------
-
     df["drift_score"] = (
 
         df["typing_z"] +
         df["click_z"]
 
     ) / 2
-
-    # -------------------------------------------------
-    # RETURN FEATURES IN EXACT TRAINING ORDER
-    # -------------------------------------------------
 
     return df[
         [
@@ -286,10 +225,6 @@ def prepare_single_session_features(df):
         ]
     ]
 
-
-# =========================================================
-# MAIN
-# =========================================================
 
 if __name__ == "__main__":
 

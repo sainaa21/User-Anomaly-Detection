@@ -1,7 +1,6 @@
 import sys
 import os
 
-# Fix import paths
 sys.path.append(
     os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..")
@@ -10,16 +9,9 @@ sys.path.append(
 
 import streamlit as st
 import pandas as pd
-import joblib
+import requests
 import shap
 import matplotlib.pyplot as plt
-
-from src.features import prepare_single_session_features
-from src.decision import decide_action
-
-# =========================================================
-# PAGE CONFIG
-# =========================================================
 
 st.set_page_config(
     page_title="Behavioral Anomaly Detection",
@@ -28,27 +20,6 @@ st.set_page_config(
 
 st.title("🚀 Behavioral Anomaly Detection System")
 st.write("User-Specific Behavioral Intelligence")
-
-# =========================================================
-# LOAD MODEL + SCALER
-# =========================================================
-
-@st.cache_resource
-def load_model():
-    return joblib.load("src/models/isolation_forest.pkl")
-
-
-@st.cache_resource
-def load_scaler():
-    return joblib.load("src/models/scaler.pkl")
-
-
-model = load_model()
-scaler = load_scaler()
-
-# =========================================================
-# SIDEBAR INPUTS
-# =========================================================
 
 st.sidebar.header("🧠 User Session Input")
 
@@ -99,10 +70,6 @@ idle_time = st.sidebar.slider(
     20
 )
 
-# =========================================================
-# SIMULATE ATTACK BUTTON
-# =========================================================
-
 if st.sidebar.button("🚨 Simulate Attack"):
 
     typing_speed = 350
@@ -114,70 +81,33 @@ if st.sidebar.button("🚨 Simulate Attack"):
 
     st.sidebar.warning("Attack values loaded!")
 
-# =========================================================
-# CREATE INPUT DATAFRAME
-# =========================================================
-
-input_data = pd.DataFrame([{
-    "user_id": user_id,
-    "typing_speed": typing_speed,
-    "avg_key_delay": avg_key_delay,
-    "click_rate": click_rate,
-    "mouse_speed": mouse_speed,
-    "session_duration": session_duration,
-    "idle_time": idle_time
-}])
-
-# =========================================================
-# FEATURE ENGINEERING
-# =========================================================
+input_data = {
+    "user_id": int(user_id),
+    "typing_speed": float(typing_speed),
+    "avg_key_delay": float(avg_key_delay),
+    "click_rate": float(click_rate),
+    "mouse_speed": float(mouse_speed),
+    "session_duration": float(session_duration),
+    "idle_time": float(idle_time)
+}
 
 try:
-    features = prepare_single_session_features(input_data)
+
+    response = requests.post(
+        "http://127.0.0.1:8000/predict",
+        json=input_data
+    )
+
+    result = response.json()
+
+    risk_score = result["risk_score"]
+
+    action = result["action"]
 
 except Exception as e:
-    st.error(f"Feature Engineering Error: {e}")
+
+    st.error(f"API Connection Error: {e}")
     st.stop()
-
-# =========================================================
-# SCALE FEATURES
-# =========================================================
-
-try:
-    scaled_features = scaler.transform(features)
-
-except Exception as e:
-    st.error(f"Scaling Error: {e}")
-    st.stop()
-
-# =========================================================
-# PREDICTION
-# =========================================================
-
-try:
-    anomaly_score = model.decision_function(
-        scaled_features
-    )[0]
-
-    # Normalize score to risk (0 → 1)
-    risk_score = 1 - ((anomaly_score + 1) / 2)
-
-    # Clamp values
-    risk_score = max(0, min(1, risk_score))
-
-except Exception as e:
-    st.error(f"Prediction Error: {e}")
-    st.stop()
-
-# =========================================================
-# DECISION SYSTEM
-# =========================================================
-
-action = decide_action(risk_score)
-
-# =========================================================
-# MAIN OUTPUT
-# =========================================================
 
 col1, col2 = st.columns(2)
 
@@ -207,10 +137,6 @@ with col2:
 
     else:
         st.error("🚨 REAUTHENTICATE")
-
-# =========================================================
-# USER BASELINE COMPARISON
-# =========================================================
 
 st.subheader("📈 User Baseline Comparison")
 
@@ -242,10 +168,6 @@ st.dataframe(
     use_container_width=True
 )
 
-# =========================================================
-# FEATURE VISUALIZATION
-# =========================================================
-
 st.subheader("📉 Behavioral Features")
 
 chart_data = pd.DataFrame({
@@ -267,43 +189,25 @@ st.bar_chart(
     chart_data.set_index("Feature")
 )
 
-# =========================================================
-# SHAP EXPLAINABILITY
-# =========================================================
+st.subheader("🔍 Explainability")
 
-st.subheader("🔍 Explainability (SHAP)")
+if risk_score > 0.8:
 
-try:
-
-    explainer = shap.TreeExplainer(model)
-
-    shap_values = explainer.shap_values(
-        scaled_features
+    st.error(
+        "Strong behavioral anomaly detected"
     )
 
-    st.write(
-        "Feature contributions to anomaly detection:"
-    )
-
-    fig, ax = plt.subplots()
-
-    shap.summary_plot(
-        shap_values,
-        scaled_features,
-        show=False
-    )
-
-    st.pyplot(fig)
-
-except Exception as e:
+elif risk_score > 0.6:
 
     st.warning(
-        f"SHAP visualization unavailable: {e}"
+        "Behavior deviates from normal pattern"
     )
 
-# =========================================================
-# SESSION HISTORY (SIMULATED)
-# =========================================================
+else:
+
+    st.success(
+        "Behavior appears normal"
+    )
 
 st.subheader("🕒 Session Risk History")
 
@@ -318,10 +222,6 @@ history_df = pd.DataFrame({
 })
 
 st.line_chart(history_df)
-
-# =========================================================
-# FINAL JSON OUTPUT
-# =========================================================
 
 st.subheader("📦 API-style Output")
 
