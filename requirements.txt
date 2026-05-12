@@ -1,6 +1,10 @@
-scikit-learn
-joblib
 pandas
+numpy
+scikit-learn
 matplotlib
+seaborn
 fastapi
 uvicorn
+streamlit
+shap
+joblib
