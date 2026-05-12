@@ -43,12 +43,12 @@ jobs:
       # 5. Train model
       - name: Train Model
         run: |
-          python src/train.py
+          python -m src.train
 
       # 6. Evaluate model
       - name: Evaluate Model
         run: |
-          python src/evaluate.py
+          python -m src.evaluate
 
       # 7. Verify FastAPI app imports correctly
       - name: Test FastAPI Import
